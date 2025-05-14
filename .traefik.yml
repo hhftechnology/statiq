@@ -1,12 +1,22 @@
-displayName: Demo Plugin
+displayName: Statiq
 type: middleware
 iconPath: .assets/icon.png
 
-import: github.com/traefik/plugindemo
+import: github.com/hhftechnology/statiq
 
-summary: '[Demo] Add Request Header'
+summary: 'A feature-rich static file server inside Traefik'
 
 testData:
-  Headers:
-    X-Demo: test
-    X-URL: '{{URL}}'
+  root: /var/www/html/
+  enableDirectoryListing: false
+  indexFiles:
+    - index.html
+    - index.htm
+  spaMode: false
+  spaIndex: index.html
+  errorPage404: ""
+  cacheControl:
+    ".html": "max-age=3600"
+    ".css": "max-age=86400"
+    ".js": "max-age=86400"
+    "*": "max-age=3600"
