@@ -1,5 +1,5 @@
 <div align="center" width="100%">
-    <h1> Statiq - Comprehensive Webserver Plugin for Traefik v3</h1>
+    <h1> Statiq - Webserver Plugin for Traefik v3</h1>
     <img width="auto" src=".assets/banner.png">
     <a target="_blank" href="https://GitHub.com/hhftechnology/tlsguard/graphs/contributors/"><img src="https://img.shields.io/github/contributors/hhftechnology/tlsguard.svg" /></a><br>
     <a target="_blank" href="https://GitHub.com/hhftechnology/statiq/commits/"><img src="https://img.shields.io/github/last-commit/hhftechnology/statiq.svg" /></a>
