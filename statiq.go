@@ -4,12 +4,16 @@ package statiq
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"io/fs"
+	"io"  // Add this import
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
-	"io"
+	"time"
 )
 
 // Config the plugin configuration.
@@ -49,9 +53,24 @@ func CreateConfig() *Config {
 	}
 }
 
+// dirEntry represents a file or directory for the directory listing template
+type dirEntry struct {
+	Name    string
+	Size    int64
+	Mode    os.FileMode
+	ModTime time.Time
+	IsDir   bool
+}
+
+// Initialize MIME types
+func init() {
+	// Register Go files as text/x-go to match standard behavior
+	mime.AddExtensionType(".go", "text/x-go")
+}
+
 // StatiqHandler is a custom file server handler
 type StatiqHandler struct {
-	root                 http.Dir
+	root                 http.FileSystem
 	rootPath             string
 	enableDirListing     bool
 	indexFiles           []string
@@ -118,14 +137,14 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if os.IsNotExist(err) {
 			if h.spaMode {
 				// In SPA mode, serve the SPA index file
-				h.serveFile(w, r, filepath.Join(string(h.root), h.spaIndex))
+				h.serveFile(w, r, filepath.Join(string(h.rootPath), h.spaIndex))
 				return
 			}
 			
 			if h.errorPage404 != "" {
 				// Serve custom 404 page
 				w.WriteHeader(h.notFoundResponseCode)
-				h.serveFile(w, r, filepath.Join(string(h.root), h.errorPage404))
+				h.serveFile(w, r, filepath.Join(string(h.rootPath), h.errorPage404))
 				return
 			}
 			
@@ -148,7 +167,7 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if d.IsDir() {
 		// Redirect if the directory name doesn't end in a slash
 		url := r.URL.Path
-		if url[len(url)-1] != '/' {
+		if len(url) == 0 || url[len(url)-1] != '/' {
 			localRedirect(w, r, url+"/")
 			return
 		}
@@ -168,7 +187,7 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if !h.enableDirListing {
 			if h.errorPage404 != "" {
 				w.WriteHeader(h.notFoundResponseCode)
-				h.serveFile(w, r, filepath.Join(string(h.root), h.errorPage404))
+				h.serveFile(w, r, filepath.Join(string(h.rootPath), h.errorPage404))
 				return
 			}
 			http.NotFound(w, r)
@@ -176,18 +195,117 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Serve directory listing
-		dirList := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.ServeContent(w, r, d.Name(), d.ModTime(), f.(io.ReadSeeker))
-		})
-		dirList.ServeHTTP(w, r)
+		h.serveDirectoryListing(w, r, f, d)
 		return
 	}
 
 	// Set cache control headers if configured
 	h.setCacheHeaders(w, r, d)
 
+	// Get content type based on file extension
+	name := d.Name()
+	ext := filepath.Ext(name)
+	contentType := mime.TypeByExtension(ext)
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+
 	// Serve the file
 	http.ServeContent(w, r, d.Name(), d.ModTime(), f.(io.ReadSeeker))
+}
+
+// serveDirectoryListing generates and serves an HTML directory listing
+func (h *StatiqHandler) serveDirectoryListing(w http.ResponseWriter, r *http.Request, f http.File, d fs.FileInfo) {
+	// List directory contents
+	dirs, err := f.Readdir(-1)
+	if err != nil {
+		http.Error(w, "Error reading directory", http.StatusInternalServerError)
+		return
+	}
+	
+	// Sort directories first, then by name
+	sort.Slice(dirs, func(i, j int) bool {
+		if dirs[i].IsDir() && !dirs[j].IsDir() {
+			return true
+		}
+		if !dirs[i].IsDir() && dirs[j].IsDir() {
+			return false
+		}
+		return dirs[i].Name() < dirs[j].Name()
+	})
+	
+	// Create slice of dirEntry for the template
+	entries := make([]dirEntry, len(dirs))
+	for i, entry := range dirs {
+		entries[i] = dirEntry{
+			Name:    entry.Name(),
+			Size:    entry.Size(),
+			Mode:    entry.Mode(),
+			ModTime: entry.ModTime(),
+			IsDir:   entry.IsDir(),
+		}
+	}
+	
+	// Set content type and render the HTML
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	
+	// Simple directory listing template
+	tmpl := template.Must(template.New("dirlist").Parse(`
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Index of {{.Path}}</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { text-align: left; padding: 8px; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        th { background-color: #4CAF50; color: white; }
+        a { text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Index of {{.Path}}</h1>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Size</th>
+            <th>Modified</th>
+        </tr>
+        {{if ne .Path "/"}}
+        <tr>
+            <td><a href="../">../</a></td>
+            <td>-</td>
+            <td>-</td>
+        </tr>
+        {{end}}
+        {{range .Files}}
+        <tr>
+            <td><a href="{{.Name}}{{if .IsDir}}/{{end}}">{{.Name}}{{if .IsDir}}/{{end}}</a></td>
+            <td>{{if .IsDir}}-{{else}}{{.Size}} bytes{{end}}</td>
+            <td>{{.ModTime.Format "2006-01-02 15:04:05"}}</td>
+        </tr>
+        {{end}}
+    </table>
+</body>
+</html>
+`))
+	
+	// Execute the template
+	data := struct {
+		Path  string
+		Files []dirEntry
+	}{
+		Path:  r.URL.Path,
+		Files: entries,
+	}
+	
+	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Error rendering directory listing", http.StatusInternalServerError)
+	}
 }
 
 // setCacheHeaders sets cache control headers based on file extension
@@ -211,8 +329,8 @@ func (h *StatiqHandler) setCacheHeaders(w http.ResponseWriter, r *http.Request, 
 }
 
 // serveFile serves a file directly from the filesystem
-func (h *StatiqHandler) serveFile(w http.ResponseWriter, r *http.Request, filepath string) {
-	f, err := os.Open(filepath)
+func (h *StatiqHandler) serveFile(w http.ResponseWriter, r *http.Request, filePath string) {
+	f, err := os.Open(filePath)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -226,6 +344,14 @@ func (h *StatiqHandler) serveFile(w http.ResponseWriter, r *http.Request, filepa
 	}
 
 	h.setCacheHeaders(w, r, d)
+	
+	// Set content type based on file extension
+	ext := filepath.Ext(d.Name())
+	contentType := mime.TypeByExtension(ext)
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	
 	http.ServeContent(w, r, d.Name(), d.ModTime(), f)
 }
 
