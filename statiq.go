@@ -1,4 +1,3 @@
-// Package statiq builds a middleware that works like a static file server
 package statiq
 
 import (
@@ -6,9 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
-	"io"  // Add this import
 	"mime"
 	"net/http"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -329,30 +328,31 @@ func (h *StatiqHandler) setCacheHeaders(w http.ResponseWriter, r *http.Request, 
 }
 
 // serveFile serves a file directly from the filesystem
+// Change the parameter name
 func (h *StatiqHandler) serveFile(w http.ResponseWriter, r *http.Request, filePath string) {
-	f, err := os.Open(filePath)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
+    f, err := os.Open(filePath)
+    if err != nil {
+        http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+        return
+    }
+    defer f.Close()
 
-	d, err := f.Stat()
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+    d, err := f.Stat()
+    if err != nil {
+        http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+        return
+    }
 
-	h.setCacheHeaders(w, r, d)
-	
-	// Set content type based on file extension
-	ext := filepath.Ext(d.Name())
-	contentType := mime.TypeByExtension(ext)
-	if contentType != "" {
-		w.Header().Set("Content-Type", contentType)
-	}
-	
-	http.ServeContent(w, r, d.Name(), d.ModTime(), f)
+    h.setCacheHeaders(w, r, d)
+    
+    // Now filepath refers to the package, not the parameter
+    ext := filepath.Ext(d.Name())
+    contentType := mime.TypeByExtension(ext)
+    if contentType != "" {
+        w.Header().Set("Content-Type", contentType)
+    }
+    
+    http.ServeContent(w, r, d.Name(), d.ModTime(), f)
 }
 
 // localRedirect gives a Moved Permanently response
