@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -172,15 +173,16 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Try to serve an index file
-		for _, index := range h.indexFiles {
-			indexPath := filepath.Join(upath, index)
-			indexFile, err := h.root.Open(indexPath)
-			if err == nil {
-				indexFile.Close()
-				localRedirect(w, r, indexPath)
-				return
-			}
-		}
+// Try to serve an index file
+for _, index := range h.indexFiles {
+    indexPath := path.Join(upath, index)  // Use path.Join for URL paths
+    indexFile, err := h.root.Open(indexPath)
+    if err == nil {
+        indexFile.Close()
+        localRedirect(w, r, indexPath)
+        return
+    }
+}
 
 		// If directory listing is disabled, return 404
 		if !h.enableDirListing {
