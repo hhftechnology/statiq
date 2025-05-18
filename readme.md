@@ -57,12 +57,12 @@ http:
       rule: host(`statiq.localhost`)
       service: noop@internal # required
       middlewares:
-        - traefik-plugin-statiq
+        - statiq
 
   middlewares:
-    traefik-plugin-statiq:
+    statiq:
       plugin:
-        traefik-plugin-statiq:
+        statiq:
           root: "/var/www/html/"
 ```
 
@@ -83,7 +83,7 @@ http:
   middlewares:
     statiq-advanced:
       plugin:
-        traefik-plugin-statiq:
+        statiq:
           root: "/var/www/spa/"
           spaMode: true
           spaIndex: "index.html"
