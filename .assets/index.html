@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statiq Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        section {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        h1, h2 {
+            color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+        }
+        .status {
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Statiq Test Page</h1>
+        <p>Successfully serving static content with Traefik Statiq plugin!</p>
+    </header>
+
+    <section>
+        <h2>Server Information</h2>
+        <ul>
+            <li><strong>Page loaded at:</strong> <span id="loadTime"></span></li>
+            <li><strong>Browser:</strong> <span id="browser"></span></li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>Interactive Test</h2>
+        <p>Click the button to verify JavaScript functionality:</p>
+        <button id="testButton">Test JavaScript</button>
+        <div id="status" class="status"></div>
+    </section>
+
+    <section>
+        <h2>Image Test</h2>
+        <p>Below should be a placeholder image (real images would work too):</p>
+        <!-- Using a placeholder image service -->
+        <img src="https://via.placeholder.com/400x200?text=Statiq+Test+Image" alt="Test Image">
+        <p><small>Note: If custom images need to be tested, add them to your static directory.</small></p>
+    </section>
+
+    <footer>
+        <p>© 2025 Statiq Test Page | Traefik Plugin Demo</p>
+    </footer>
+
+    <script>
+        // Display page load time
+        document.getElementById('loadTime').textContent = new Date().toLocaleString();
+
+        // Display browser information
+        document.getElementById('browser').textContent = navigator.userAgent;
+
+        // Add button functionality
+        document.getElementById('testButton').addEventListener('click', function() {
+            const status = document.getElementById('status');
+            status.textContent = 'JavaScript is working correctly!';
+            status.className = 'status success';
+        });
+    </script>
+</body>
+</html>
