@@ -88,6 +88,13 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 	if err != nil {
 		return nil, fmt.Errorf("invalid root path: %w", err)
 	}
+	// Check if directory exists but don't fail initialization
+_, statErr := os.Stat(root)
+if os.IsNotExist(statErr) {
+    // Directory doesn't exist, but we'll continue initialization
+    // Actual file serving will fail appropriately when requests come in
+    // This allows the plugin to be validated by Traefik Plugin Analyzer
+}
 
 	// Verify the directory exists
 // Instead of failing immediately, create the directory if it doesn't exist
