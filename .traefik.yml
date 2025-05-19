@@ -7,7 +7,7 @@ import: github.com/hhftechnology/statiq
 summary: 'A feature-rich static file server inside Traefik'
 
 testData:
-  root: /var/www/html/
+  root: ./test_assets/sample_site/  # <-- Updated relative path
   enableDirectoryListing: false
   indexFiles:
     - index.html
