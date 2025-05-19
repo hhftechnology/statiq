@@ -90,9 +90,13 @@ func New(_ context.Context, next http.Handler, config *Config, _ string) (http.H
 	}
 
 	// Verify the directory exists
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		return nil, fmt.Errorf("root directory does not exist: %s", root)
-	}
+// Instead of failing immediately, create the directory if it doesn't exist
+if _, err := os.Stat(root); os.IsNotExist(err) {
+    if err := os.MkdirAll(root, 0755); err != nil {
+        return nil, fmt.Errorf("failed to create root directory %s: %w", root, err)
+    }
+    // Log that directory was created
+}
 
 	// Check if custom 404 page exists
 	notFoundResponseCode := http.StatusNotFound
