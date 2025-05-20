@@ -82,40 +82,42 @@ type StatiqHandler struct {
 }
 
 // New creates a new Statiq plugin.
+// New creates a new Statiq plugin.
 func New(_ context.Context, next http.Handler, config *Config, _ string) (http.Handler, error) {
-	// Ensure the root path is absolute
-	root, err := filepath.Abs(config.Root)
-	if err != nil {
-		return nil, fmt.Errorf("invalid root path: %w", err)
-	}
-
-	// Directory existence check removed to allow plugin initialization
-	// in test environments where directories might not exist
-
-	// Check if custom 404 page exists - also make this check optional
-	notFoundResponseCode := http.StatusNotFound
-	if config.ErrorPage404 != "" {
-		// We'll validate the error page at runtime instead of initialization time
-		notFoundResponseCode = http.StatusOK // We'll serve the error page with 200 OK
-	}
-
-	// Create a custom handler
-	handler := &StatiqHandler{
-		root:                 http.Dir(root),
-		rootPath:             root,
-		enableDirListing:     config.EnableDirectoryListing,
-		indexFiles:           config.IndexFiles,
-		spaMode:              config.SPAMode,
-		spaIndex:             config.SPAIndex,
-		errorPage404:         config.ErrorPage404,
-		cacheControl:         config.CacheControl,
-		notFoundResponseCode: notFoundResponseCode,
-	}
-
-	// Return our custom handler
-	return handler, nil
+    // Ensure the root path is absolute
+    root, err := filepath.Abs(config.Root)
+    if err != nil {
+        return nil, fmt.Errorf("invalid root path: %w", err)
+    }
+	// Ensure the directory exists
+if _, err := os.Stat(root); os.IsNotExist(err) {
+    if err := os.MkdirAll(root, 0755); err != nil {
+        return nil, fmt.Errorf("failed to create root directory: %w", err)
+    }
 }
+    // Check if custom 404 page exists - also make this check optional
+    notFoundResponseCode := http.StatusNotFound
+    if config.ErrorPage404 != "" {
+        // We'll validate the error page at runtime instead of initialization time
+        notFoundResponseCode = http.StatusOK // We'll serve the error page with 200 OK
+    }
 
+    // Create a custom handler
+    handler := &StatiqHandler{
+        root:                 http.Dir(root),
+        rootPath:             root,
+        enableDirListing:     config.EnableDirectoryListing,
+        indexFiles:           config.IndexFiles,
+        spaMode:              config.SPAMode,
+        spaIndex:             config.SPAIndex,
+        errorPage404:         config.ErrorPage404,
+        cacheControl:         config.CacheControl,
+        notFoundResponseCode: notFoundResponseCode,
+    }
+
+    // Return our custom handler
+    return handler, nil
+}
 // ServeHTTP serves HTTP requests with static files
 func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Clean the path
