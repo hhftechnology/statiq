@@ -63,7 +63,7 @@ http:
     statiq:
       plugin:
         statiq:
-          root: "/var/www/html/"
+          root: "./test_assets/sample_site/"
 ```
 
 ### Advanced Configuration
@@ -84,7 +84,7 @@ http:
     statiq-advanced:
       plugin:
         statiq:
-          root: "/var/www/spa/"
+          root: "./test_assets/sample_site/"
           spaMode: true
           spaIndex: "index.html"
           errorPage404: "error/404.html"
