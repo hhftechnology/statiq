@@ -2,6 +2,7 @@ package statiq
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -168,15 +169,39 @@ func (h *StatiqHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Try to serve an index file
+		// Try to serve an index file inline at the requested URL.
+		// Redirecting to the index file path would change the URL bar to
+		// `/foo/index.html`, which breaks SPA routers that match on the
+		// canonical path (`/foo/`).
 		for _, index := range h.indexFiles {
-			indexPath := path.Join(upath, index)  // Use path.Join for URL paths
+			indexPath := path.Join(upath, index)
 			indexFile, err := h.root.Open(indexPath)
-			if err == nil {
-				indexFile.Close()
-				localRedirect(w, r, indexPath)
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
+				if os.IsPermission(err) {
+					http.Error(w, "Forbidden", http.StatusForbidden)
+				} else {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
 				return
 			}
+			stat, statErr := indexFile.Stat()
+			indexFile.Close()
+			if statErr != nil {
+				if os.IsPermission(statErr) {
+					http.Error(w, "Forbidden", http.StatusForbidden)
+				} else {
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				}
+				return
+			}
+			if stat.IsDir() {
+				continue
+			}
+			h.serveFile(w, r, filepath.Join(h.rootPath, indexPath))
+			return
 		}
 
 		// If directory listing is disabled, return 404

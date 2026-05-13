@@ -143,39 +143,28 @@ func TestIndexFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	
-	// Test directory request with trailing slash
+	// Directory requests with a trailing slash should serve the index file
+	// inline (200 OK) so the browser's URL stays at the canonical directory
+	// path — redirecting to `/subdir/custom.html` breaks SPA routers that
+	// match on the canonical path.
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://localhost/subdir/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	
+
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
-	
-	if recorder.Code != http.StatusMovedPermanently {
-		t.Errorf("Expected redirect for directory, got status code %d", recorder.Code)
-	}
-	
-	// Get the redirect location and follow it
-	location := recorder.Header().Get("Location")
-	if location != "/subdir/custom.html" {
-		t.Errorf("Expected redirect to /subdir/custom.html, got %s", location)
-	}
-	
-	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, "http://localhost"+location, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, req)
-	
+
 	if recorder.Code != http.StatusOK {
-		t.Errorf("Expected 200 OK, got %d", recorder.Code)
+		t.Errorf("Expected 200 OK for directory with index, got %d", recorder.Code)
 	}
-	
+
 	if recorder.Body.String() != indexContent {
 		t.Errorf("Expected index content, got %s", recorder.Body.String())
+	}
+
+	if loc := recorder.Header().Get("Location"); loc != "" {
+		t.Errorf("Expected no redirect Location header, got %s", loc)
 	}
 }
 
